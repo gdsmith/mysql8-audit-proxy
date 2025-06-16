@@ -188,7 +188,7 @@ func TestColumnsToConfig(t *testing.T) {
 
 	for _, tt := range testcase {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := columnsToConfig(&tt.in)
+			got, err := ColumnsToConfig(&tt.in)
 			if err != nil {
 				if err.Error() != tt.err.Error() {
 					t.Error(err)
@@ -254,7 +254,7 @@ func TestSelectResultset(t *testing.T) {
 
 	for _, tt := range testcase {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCols, gotVuls, err := selectResultset(&tt.query, tt.servers)
+			gotCols, gotVuls, err := SelectResultset(&tt.query, tt.servers)
 			if err != nil {
 				if err.Error() != tt.err.Error() {
 					t.Error(err)
@@ -330,7 +330,7 @@ func TestSelectResultset2(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			columns, rows, err := selectResultset(&tc.parsedQuery, servers)
+			columns, rows, err := SelectResultset(&tc.parsedQuery, servers)
 			if err != nil {
 				if tc.expectedErr == nil {
 					t.Errorf("unexpected error: %v", err)
@@ -432,7 +432,7 @@ func TestWhereColumnsToConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			res, err := whereColumnsToConfig(&tc.parsedQuery, servers)
+			res, err := WhereColumnsToConfig(&tc.parsedQuery, servers)
 			if err != nil {
 				if tc.expectedErr == nil {
 					t.Errorf("unexpected error: %v", err)

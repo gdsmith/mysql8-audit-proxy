@@ -97,7 +97,7 @@ func TestManager(t *testing.T) {
 
 			t.Run("GetPassword", func(t *testing.T) {
 				got, _ := m.GetPassword(tc.user)
-				if got != tc.pass {
+				if got.Password != tc.pass {
 					t.Errorf("mismatch (-got +expected):-%s,+%s", got, tc.pass)
 				}
 			})

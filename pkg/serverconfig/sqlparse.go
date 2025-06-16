@@ -17,6 +17,8 @@ const (
 	InsertStmt = "insert"
 	DeleteStmt = "delete"
 	SelectStmt = "select"
+	UseStmt    = "use"
+	ShowStmt   = "show"
 
 	Where = "Where"
 )
@@ -31,6 +33,7 @@ type Query struct {
 	WhereColumns []string  `json:",omitempty"`
 	WhereValues  []string  `json:",omitempty"`
 	WhereOp      opcode.Op `json:",omitempty"`
+	Database     string    `json:",omitempty"`
 }
 
 type ParsedQuery struct {
@@ -65,6 +68,11 @@ func (p *ParsedQuery) Enter(in ast.Node) (ast.Node, bool) {
 	case *ast.DeleteStmt:
 		p.Statement = DeleteStmt
 		p.Text = s.Text()
+	case *ast.UseStmt:
+		p.Statement = UseStmt
+		p.Database = s.DBName
+	case *ast.ShowStmt:
+		p.Statement = ShowStmt
 	case *ast.TableName:
 		p.TableName = s.Name.L
 	case *ast.BinaryOperationExpr:
@@ -90,7 +98,7 @@ func (p *ParsedQuery) Enter(in ast.Node) (ast.Node, bool) {
 
 func (p *ParsedQuery) Leave(in ast.Node) (ast.Node, bool) {
 	switch in.(type) {
-	case *ast.SelectStmt, *ast.InsertStmt, *ast.UpdateStmt, *ast.DeleteStmt:
+	case *ast.SelectStmt, *ast.InsertStmt, *ast.UpdateStmt, *ast.DeleteStmt, *ast.UseStmt, *ast.ShowStmt:
 		p.LeaveFunc()
 	case *ast.BinaryOperationExpr:
 		p.CurrentType = ""
@@ -134,7 +142,7 @@ var (
 	lPassword = strings.ToLower(Password)
 )
 
-func columnsToConfig(p *ParsedQuery) ([]Server, error) {
+func ColumnsToConfig(p *ParsedQuery) ([]Server, error) {
 	res := []Server{}
 	if len(p.Columns) == 0 {
 		p.Columns = []string{User, Password}
@@ -161,7 +169,7 @@ func columnsToConfig(p *ParsedQuery) ([]Server, error) {
 	return res, nil
 }
 
-func updateColumns(p *ParsedQuery, s Server) (Server, error) {
+func UpdateColumns(p *ParsedQuery, s Server) (Server, error) {
 	if len(p.Columns) == 0 {
 		p.Columns = []string{User, Password}
 	}
@@ -189,7 +197,7 @@ func getString(s []string, i int) string {
 	}[i < len(s)]()
 }
 
-func whereColumnsToConfig(p *ParsedQuery, servers []Server) ([]Server, error) {
+func WhereColumnsToConfig(p *ParsedQuery, servers []Server) ([]Server, error) {
 	if p.WhereColumns == nil || len(p.WhereColumns) == 0 {
 		return servers, nil
 	}
@@ -219,7 +227,7 @@ func selection(f func(s Server) bool, servers []Server) []Server {
 	return res
 }
 
-func selectResultset(p *ParsedQuery, servers []Server) ([]string, [][]interface{}, error) {
+func SelectResultset(p *ParsedQuery, servers []Server) ([]string, [][]interface{}, error) {
 	if len(p.Columns) == 0 {
 		p.Columns = []string{User, Password}
 	}

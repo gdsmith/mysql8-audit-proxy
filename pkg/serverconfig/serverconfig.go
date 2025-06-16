@@ -8,11 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-mysql-org/go-mysql/server"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
+
+	"github.com/go-mysql-org/go-mysql/mysql"
 )
 
 const (
@@ -35,10 +38,14 @@ type Server struct {
 
 var (
 	defaultConfig = func(key []byte) *Config {
+		credentials, err := server.NewCredential("pass", mysql.AUTH_CACHING_SHA2_PASSWORD)
+		if err != nil {
+			log.Fatalf("failed to create credentials: %v", err)
+		}
 		return &Config{
 			Key: key,
 			Servers: []Server{
-				{User: "admin", Password: mustEncrypt(key, "pass")},
+				{User: "admin", Password: mustEncrypt(key, credentials.Password)},
 			},
 		}
 	}
@@ -131,23 +138,27 @@ func (m *Manager) Insert(p *ParsedQuery) (uint64, error) {
 }
 
 func (m *Manager) insert(p *ParsedQuery, conf *Config) (uint64, error) {
-	servers, err := columnsToConfig(p)
+	servers, err := ColumnsToConfig(p)
 	n := uint64(0)
 	if err != nil {
 		return n, err
 	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	for _, server := range servers {
-		if _, ok := m.serverIndex[server.User]; ok {
-			return n, fmt.Errorf("allready exists proxyUser:%s", server.User)
+	for _, s := range servers {
+		if _, ok := m.serverIndex[s.User]; ok {
+			return n, fmt.Errorf("allready exists proxyUser:%s", s.User)
 		}
-		server.Password, err = encrypt(conf.Key, server.Password)
+		c, err := server.NewCredential(s.Password, mysql.AUTH_CACHING_SHA2_PASSWORD)
 		if err != nil {
 			return n, err
 		}
-		conf.Servers = append(conf.Servers, server)
-		m.serverIndex[server.User] = len(conf.Servers) - 1
+		s.Password, err = encrypt(conf.Key, c.Password)
+		if err != nil {
+			return n, err
+		}
+		conf.Servers = append(conf.Servers, s)
+		m.serverIndex[s.User] = len(conf.Servers) - 1
 		n++
 	}
 	return n, nil
@@ -155,11 +166,11 @@ func (m *Manager) insert(p *ParsedQuery, conf *Config) (uint64, error) {
 
 func (m *Manager) Select(p *ParsedQuery) ([]string, [][]interface{}, error) {
 	conf := m.GetConfig()
-	rows, err := whereColumnsToConfig(p, conf.Servers)
+	rows, err := WhereColumnsToConfig(p, conf.Servers)
 	if err != nil {
 		return nil, nil, err
 	}
-	return selectResultset(p, rows)
+	return SelectResultset(p, rows)
 }
 func (m *Manager) Update(p *ParsedQuery) (uint64, error) {
 	conf := m.GetConfig()
@@ -172,7 +183,7 @@ func (m *Manager) Update(p *ParsedQuery) (uint64, error) {
 
 func (m *Manager) update(p *ParsedQuery, conf *Config) (uint64, error) {
 	n := uint64(0)
-	rows, err := whereColumnsToConfig(p, conf.Servers)
+	rows, err := WhereColumnsToConfig(p, conf.Servers)
 	if err != nil {
 		return n, err
 	}
@@ -186,7 +197,7 @@ func (m *Manager) update(p *ParsedQuery, conf *Config) (uint64, error) {
 		if !ok {
 			return n, fmt.Errorf("proxyUser:%s not found", u.User)
 		}
-		s, err := updateColumns(p, u)
+		s, err := UpdateColumns(p, u)
 		if err != nil {
 			return n, err
 		}
@@ -212,7 +223,7 @@ func (m *Manager) Delete(p *ParsedQuery) (uint64, error) {
 func (m *Manager) delete(p *ParsedQuery, conf *Config) (uint64, error) {
 	n := uint64(0)
 	res := make([]Server, 0, len(conf.Servers))
-	rows, err := whereColumnsToConfig(p, conf.Servers)
+	rows, err := WhereColumnsToConfig(p, conf.Servers)
 	if err != nil {
 		return n, err
 	}
@@ -303,17 +314,20 @@ func (m *Manager) getServer(conf *Config, username string) *Server {
 	*/
 }
 
-func (m *Manager) GetPassword(username string) (string, error) {
+func (m *Manager) GetPassword(username string) (server.Credential, error) {
 	conf := m.GetConfig()
 	s := m.getServer(conf, username)
 	if s == nil {
-		return "", errors.New("not found")
+		return server.Credential{}, errors.New("not found")
 	}
 	p, err := decrypt(conf.Key, s.Password)
 	if err != nil {
-		return "", err
+		return server.Credential{}, err
 	}
-	return string(p), nil
+	return server.Credential{
+		p,
+		mysql.AUTH_CACHING_SHA2_PASSWORD,
+	}, nil
 }
 
 func generateKey() ([]byte, error) {

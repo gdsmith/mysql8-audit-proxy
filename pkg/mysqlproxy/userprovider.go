@@ -1,5 +1,9 @@
 package mysqlproxy
 
+import (
+	"github.com/go-mysql-org/go-mysql/server"
+)
+
 // interface for user credential provider
 // hint: can be extended for more functionality
 // =================================IMPORTANT NOTE===============================
@@ -14,17 +18,17 @@ type CredentialProvider interface {
 }
 */
 
-type userManager interface {
-	GetPassword(username string) (string, error)
+type UserManager interface {
+	GetPassword(username string) (server.Credential, error)
 }
 
-func NewConfigProvider(m userManager) *ConfigProvider {
-	return &ConfigProvider{userManager: m}
+func NewConfigProvider(m UserManager) *ConfigProvider {
+	return &ConfigProvider{UserManager: m}
 }
 
 // implements a in memory credential provider
 type ConfigProvider struct {
-	userManager
+	UserManager
 	//mu      sync.Mutex
 	//servers []Server
 }
@@ -35,11 +39,11 @@ func (m *ConfigProvider) CheckUsername(username string) (bool, error) {
 	return err == nil, err
 }
 
-func (m *ConfigProvider) GetCredential(username string) (password string, found bool, err error) {
+func (m *ConfigProvider) GetCredential(username string) (password server.Credential, found bool, err error) {
 	//log.Printf("GetCredential username:%s", username)
 	pw, err := m.GetPassword(username)
 	if err != nil {
-		return "", false, nil
+		return server.Credential{}, false, nil
 	}
 	return pw, true, nil
 }

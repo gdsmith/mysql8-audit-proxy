@@ -113,7 +113,12 @@ func (p *ProxySrv) sessionWorker(ctx context.Context, netConn net.Conn) {
 	}
 	targetUser, targetAddr, targetPasswrd := getTargetInfo(user)
 	if len(targetPasswrd) == 0 {
-		targetPasswrd, _, _ = remoteProvider.GetCredential(user)
+		//credential, found, err := remoteProvider.GetCredential(user)
+		//if !found || err != nil {
+		//	log.Printf("credential problem: %v", err)
+		//	return
+		//}
+		targetPasswrd = "changeme"
 	}
 	targetAddr = addPort(targetAddr)
 	sess := &ClientSess{
@@ -141,7 +146,7 @@ func addPort(s string) string {
 	}
 	ss := strings.Split(s, ":")
 	if len(ss) == 1 {
-		return s + ":3306"
+		return s + ":33066"
 	}
 	return s
 }

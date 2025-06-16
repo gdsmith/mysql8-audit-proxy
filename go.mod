@@ -2,6 +2,8 @@ module github.com/masahide/mysql8-audit-proxy
 
 go 1.24.3
 
+replace github.com/go-mysql-org/go-mysql v1.12.1-0.20250608015112-d942f1b870b0 => ../go-mysql
+
 require (
 	github.com/dzeromsk/debpack v0.0.0-20190912160929-4b3d7b5dd69b
 	github.com/go-mysql-org/go-mysql v1.12.1-0.20250608015112-d942f1b870b0
