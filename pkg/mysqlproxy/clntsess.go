@@ -136,9 +136,9 @@ func (c *ClientSess) ConnectToMySQL(ctx context.Context) error {
 	TargetConn, err := client.ConnectWithDialer(ctx,
 		c.TargetNet, c.TargetAddr, c.TargetUser, c.TargetPassword, c.TargetDB, clientDialer,
 		func(con *client.Conn) error {
-			cap := c.ClientMysql.Capability() | mysql.CLIENT_LOCAL_FILES
-			// PrintCapability(cap)
-			con.SetCapability(cap)
+			con.SetCapability(c.ClientMysql.Capability())
+			con.UnsetCapability(mysql.CLIENT_LOCAL_FILES)      // disable CLIENT_LOCAL_FILES for now
+			con.UnsetCapability(mysql.CLIENT_DEPRECATE_EOF)    // disable CLIENT_DEPRECATE_EOF for now
 			con.UnsetCapability(mysql.CLIENT_QUERY_ATTRIBUTES) // disable CLIENT_QUERY_ATTRIBUTES for now
 			return nil
 		},
